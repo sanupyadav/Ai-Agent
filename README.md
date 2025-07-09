@@ -21,7 +21,7 @@
 
 ---
 
-## 🤖 Pay1 AI Agent — Smart Support Chat in Laravel
+## 🤖 AI Agent — Smart Support Chat in Laravel
 
 A modern AI chatbot powered by Laravel + LLMs (like Ollama, OpenAI, GitHubAI).  
 It provides real-time chat, dynamic prompts, markdown rendering, and supports multiple AI providers.
