@@ -13,10 +13,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up PHP
+      - name: Set up PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, intl, pdo_mysql
           tools: composer
 
@@ -41,7 +41,6 @@ jobs:
         if: success()
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          php-version: '8.3'
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
