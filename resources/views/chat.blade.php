@@ -21,7 +21,7 @@
         <label for="provider" class="block text-sm font-medium text-gray-700">🧠 Provider</label>
         <select id="provider" class="w-full mt-1 rounded-md px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500">
           <option value="ollama">Ollama</option>
-          <option value="openai">OpenAI</option>
+          {{-- <option value="openai">OpenAI</option> --}}
           <option value="gpt4o">GPT4o</option>
           <option value="gpt41">GPT4.1</option>
           <option value="grok">GROK-3</option>

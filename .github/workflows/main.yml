@@ -26,11 +26,11 @@ jobs:
           port: 21
           server-dir: /htdocs/ # <-- yours is direct Laravel in htdocs
           log-level: standard
-          # exclude: |
-          #   **/.git*
-          #   **/.DS_Store
-          #   **/node_modules/**
-          #   **/vendor/**
-          #   **/storage/framework/cache/**
-          #   **/storage/framework/views/**
+          exclude: |
+            **/.git*
+            **/.DS_Store
+            **/node_modules/**
+            **/vendor/**
+            # **/storage/framework/cache/**
+            # **/storage/framework/views/**
           dangerous-clean-slate: false
