@@ -2,102 +2,208 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\VectorChunk;
+use Exception;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\IOFactory;
 use Illuminate\Routing\Controller;
-use OpenAI\Laravel\Facades\OpenAI;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpWord\Element\Text;
+use App\Services\EmbeddingGenerator;
 use Smalot\PdfParser\Parser as PdfParser;
 use PhpOffice\PhpWord\Element\TextRun;
-use Illuminate\Support\Facades\Storage;
 
 class FileEmbedController extends Controller
 {
-    public function upload(Request $request)
+    protected $embeddingGenerator;
+
+    public function __construct(EmbeddingGenerator $embeddingGenerator)
     {
+        $this->embeddingGenerator = $embeddingGenerator;
+    }
+
+    public function upload(Request $request)
+{
+    try {
         $request->validate([
-            'file' => 'required|mimes:pdf,txt,docx',
+            'file' => 'required|file|mimes:pdf,txt,docx|max:10240',
         ]);
-    
+
         $file = $request->file('file');
         $text = $this->extractText($file);
-        $chunks = $this->chunkText($text);
-    
-        foreach ($chunks as $chunk) {
-            $response = OpenAI::embeddings()->create([
-                'model' => 'text-embedding-ada-002',
-                'input' => $chunk,
-            ]);
 
-            if (!Storage::exists('embeddings')) {
-                Storage::makeDirectory('embeddings');
-            }            
-    
-            // Save to storage instead of DB
-            $filename = 'embedding_' . uniqid() . '.json';
-    
-            $data = [
-                'text' => $chunk,
-                'embedding' => $response->embeddings[0]->embedding,
-            ];
-    
-            Storage::put("embeddings/{$filename}", json_encode($data));
+        if (empty($text)) {
+            return response()->json(['error' => 'Failed to extract text from file'], 400);
         }
-    
-        return response()->json(['message' => '✅ File uploaded and embedded successfully']);
+
+        $chunks = $this->chunkText($text);
+
+        if (empty($chunks)) {
+            return response()->json(['error' => 'No text chunks created'], 400);
+        }
+
+        $allEmbeddings = [];
+
+        foreach ($chunks as $index => $chunk) {
+            $embeddingData = $this->embeddingGenerator->generateEmbeddingData(
+                text: $chunk,
+                fileName: $file->getClientOriginalName(),
+                chunkIndex: $index,
+                providerName: 'ollama',
+                model: 'nomic-embed-text'
+            );
+
+            if ($embeddingData !== null) {
+                $allEmbeddings[] = $embeddingData;
+            }
+        }
+
+        if (empty($allEmbeddings)) {
+            return response()->json(['error' => 'Failed to generate embeddings for any chunks'], 500);
+        }
+
+        $storagePath = 'embeddings';
+        $filename = 'all_embeddings.json';
+
+        if (!\Illuminate\Support\Facades\Storage::exists($storagePath)) {
+            \Illuminate\Support\Facades\Storage::makeDirectory($storagePath);
+        }
+
+        $fullPath = "{$storagePath}/{$filename}";
+
+        // Read existing embeddings from file
+        $existingData = [];
+        if (\Illuminate\Support\Facades\Storage::exists($fullPath)) {
+            $json = \Illuminate\Support\Facades\Storage::get($fullPath);
+            $existingData = json_decode($json, true) ?? [];
+        }
+
+        // Merge existing embeddings with new ones
+        $mergedData = array_merge($existingData, $allEmbeddings);
+
+        // Save merged data back to the same file
+        \Illuminate\Support\Facades\Storage::put($fullPath, json_encode($mergedData));
+
+        return response()->json([
+            'message' => '✅ File uploaded and embedded successfully, embeddings appended to all_embeddings.json',
+            'chunk_count' => count($chunks),
+            'successful_chunks' => count($allEmbeddings),
+            'stored_file' => $filename
+        ], 200);
+
+    } catch (Exception $e) {
+        \Illuminate\Support\Facades\Log::error('File upload error: ' . $e->getMessage());
+        return response()->json([
+            'error' => 'Failed to process file: ' . $e->getMessage()
+        ], 500);
     }
+}
+
+    
 
     private function extractText($file)
     {
-        $ext = $file->getClientOriginalExtension();
+        try {
+            $ext = strtolower($file->getClientOriginalExtension());
 
-        return match ($ext) {
-            'pdf' => (new PdfParser())->parseFile($file->getPathname())->getText(),
-            'docx' => $this->extractFromDocx($file->getPathname()),
-            'txt' => file_get_contents($file->getPathname()),
-            default => '',
-        };
+            return match ($ext) {
+                'pdf' => $this->extractFromPdf($file->getPathname()),
+                'docx' => $this->extractFromDocx($file->getPathname()),
+                'txt' => $this->extractFromTxt($file->getPathname()),
+                default => throw new Exception('Unsupported file type: ' . $ext),
+            };
+        } catch (Exception $e) {
+            Log::error('Text extraction error: ' . $e->getMessage());
+            return '';
+        }
     }
 
-    
+    private function extractFromPdf($path)
+    {
+        try {
+            $parser = new PdfParser();
+            $pdf = $parser->parseFile($path);
+            return trim($pdf->getText());
+        } catch (Exception $e) {
+            Log::error('PDF extraction error: ' . $e->getMessage());
+            return '';
+        }
+    }
+
     private function extractFromDocx($path)
     {
-        $text = '';
-        $phpWord = IOFactory::load($path);
-    
-        foreach ($phpWord->getSections() as $section) {
-            foreach ($section->getElements() as $element) {
-                // If the element is plain text
-                if ($element instanceof Text) {
-                    $text .= $element->getText() . "\n";
-                }
-    
-                // If the element is a TextRun (contains multiple Text elements)
-                elseif ($element instanceof TextRun) {
-                    foreach ($element->getElements() as $subElement) {
-                        if ($subElement instanceof Text) {
-                            $text .= $subElement->getText() . "\n";
+        try {
+            $text = '';
+            $phpWord = IOFactory::load($path);
+
+            foreach ($phpWord->getSections() as $section) {
+                foreach ($section->getElements() as $element) {
+                    if ($element instanceof Text) {
+                        $text .= $element->getText() . "\n";
+                    } elseif ($element instanceof TextRun) {
+                        foreach ($element->getElements() as $subElement) {
+                            if ($subElement instanceof Text) {
+                                $text .= $subElement->getText() . "\n";
+                            }
                         }
                     }
                 }
             }
+
+            return trim($text);
+        } catch (Exception $e) {
+            Log::error('DOCX extraction error: ' . $e->getMessage());
+            return '';
         }
-    
-        return $text;
     }
-    
 
-    private function chunkText($text, $size = 300, $overlap = 50)
+    private function extractFromTxt($path)
     {
-        $words = explode(' ', $text);
-        $chunks = [];
-
-        for ($i = 0; $i < count($words); $i += $size - $overlap) {
-            $chunk = array_slice($words, $i, $size);
-            $chunks[] = implode(' ', $chunk);
+        try {
+            return trim(file_get_contents($path));
+        } catch (Exception $e) {
+            Log::error('TXT extraction error: ' . $e->getMessage());
+            return '';
         }
+    }
 
-        return $chunks;
+    private function chunkText($text, $maxTokens = 500, $overlapTokens = 50)
+    {
+        try {
+            $words = explode(' ', trim($text));
+            $chunks = [];
+            $currentChunk = [];
+            $currentTokenCount = 0;
+            $wordCount = count($words);
+
+            // Rough token estimation (1 word ≈ 1.3 tokens)
+            for ($i = 0; $i < $wordCount; $i++) {
+                $word = $words[$i];
+                $wordTokens = ceil(mb_strlen($word) / 4); // Approximate tokens per word
+
+                if ($currentTokenCount + $wordTokens > $maxTokens) {
+                    if (!empty($currentChunk)) {
+                        $chunks[] = implode(' ', $currentChunk);
+
+                        // Handle overlap
+                        $overlapWords = array_slice($currentChunk, -$overlapTokens);
+                        $currentChunk = $overlapWords;
+                        $currentTokenCount = ceil(count($overlapWords) * 1.3);
+                    }
+                }
+
+                $currentChunk[] = $word;
+                $currentTokenCount += $wordTokens;
+            }
+
+            // Add final chunk if not empty
+            if (!empty($currentChunk)) {
+                $chunks[] = implode(' ', $currentChunk);
+            }
+
+            return array_filter($chunks, fn($chunk) => !empty(trim($chunk)));
+        } catch (Exception $e) {
+            Log::error('Text chunking error: ' . $e->getMessage());
+            return [];
+        }
     }
 }
