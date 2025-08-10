@@ -34,6 +34,31 @@
         <select id="model" class="w-full mt-1 rounded-md px-4 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500"></select>
       </div>
     </div>
+
+    <!-- File Upload -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700">📂 Upload File</label>
+      <form id="uploadForm" class="mt-1 flex items-center gap-2 max-w-full" enctype="multipart/form-data" novalidate>
+        <input
+          type="file"
+          name="file"
+          id="fileInput"
+          class="flex-grow min-w-0 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+          accept=".pdf,.docx,.txt"
+        />
+        <button
+          type="submit"
+          class="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-blue-700 transition"
+        >
+          Upload
+        </button>
+      </form>
+      <div
+        id="uploadStatus"
+        class="mt-2 text-sm font-medium min-h-[1.5rem] transition-opacity duration-300 opacity-0"
+      ></div>
+    </div>
+
   </div>
 
   <!-- Main Chat -->
@@ -69,8 +94,8 @@
     const toggleSidebarBtn = document.getElementById('toggleSidebar');
     const expandSidebarBtn = document.getElementById('expandSidebar');
 
-      const models = @json($models);
-
+    // Replace this with your backend injected JSON models list
+    const models = @json($models);
 
     function renderModels(provider) {
       modelSelect.innerHTML = '';
@@ -182,6 +207,71 @@
 
       button.disabled = false;
       button.innerText = '🚀 Ask';
+    });
+
+    // Upload File Handling
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    let uploadTimeout;
+
+    function showUploadMessage(message, type = 'info') {
+      const colors = {
+        info: 'text-blue-600 bg-blue-100 px-3 py-1 rounded',
+        success: 'text-green-700 bg-green-100 px-3 py-1 rounded',
+        error: 'text-red-700 bg-red-100 px-3 py-1 rounded',
+      };
+      clearTimeout(uploadTimeout);
+      uploadStatus.textContent = message;
+      uploadStatus.className = `mt-2 text-sm font-medium min-h-[1.5rem] transition-opacity duration-300 ${colors[type]}`;
+      uploadStatus.style.opacity = 1;
+
+      // Auto-hide after 5 seconds
+      uploadTimeout = setTimeout(() => {
+        clearUploadMessage();
+      }, 5000);
+    }
+
+    function clearUploadMessage() {
+      uploadStatus.style.opacity = 0;
+      setTimeout(() => {
+        uploadStatus.textContent = '';
+        uploadStatus.className = 'mt-2 text-sm font-medium min-h-[1.5rem] transition-opacity duration-300 opacity-0';
+      }, 300);
+    }
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!fileInput.files.length) {
+        showUploadMessage('⚠️ Please select a file.', 'error');
+        return;
+      }
+
+      clearUploadMessage();
+      showUploadMessage('Uploading & embedding...', 'info');
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      formData.append('provider', providerSelect.value);
+
+      try {
+        const res = await fetch('/api/upload-file', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          showUploadMessage(data.message || '✅ Upload successful!', 'success');
+        } else {
+          showUploadMessage(data.message || '❌ Upload failed.', 'error');
+        }
+      } catch (err) {
+        showUploadMessage('❌ Upload failed. Please try again.', 'error');
+      }
     });
   </script>
 </body>
