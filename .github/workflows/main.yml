@@ -1,50 +1,36 @@
-name: Lint, Format & Deploy to InfinityFree
+name: FTP Deploy
 
 on:
   push:
     branches:
-      - main
+      - main  # Change to your branch
 
 jobs:
-  lint-format-deploy:
+  ftp-deploy:
+    name: Deploy Laravel to FTP
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up PHP 8.3
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, intl, pdo_mysql
-          tools: composer
+      - name: Install Composer dependencies (local for vendor cache)
+        run: composer install --no-dev --prefer-dist --optimize-autoloader
 
-      - name: Install Dependencies
-        run: composer install --no-progress --no-interaction
-
-      # ✅ Syntax Check
-      - name: Run PHP Syntax Check
-        run: |
-          find . -type f -name "*.php" -exec php -l {} \;
-
-      # ✅ Auto-Format with Laravel Pint
-      - name: Run Laravel Pint (Formatter)
-        run: vendor/bin/pint --verbose
-
-      # ✅ Advanced Code Style Check
-      # - name: Run PHP CodeSniffer
-      #   run: vendor/bin/phpcs --standard=PSR12 app routes database
-
-      # ✅ Deploy only if all above steps pass
-      - name: Upload via FTP
-        if: success()
+      - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: ${{ secrets.FTP_PORT }}
-          #local-dir: ./public
-          server-dir: ${{ secrets.FTP_PATH }}
-          log-level : standard
+          port: 21
+          server-dir: /htdocs/ # <-- yours is direct Laravel in htdocs
+          log-level: standard
+          # exclude: |
+          #   **/.git*
+          #   **/.DS_Store
+          #   **/node_modules/**
+          #   **/vendor/**
+          #   **/storage/framework/cache/**
+          #   **/storage/framework/views/**
+          dangerous-clean-slate: false
