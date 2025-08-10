@@ -62,7 +62,7 @@ return [
             'driver' => \LarAgent\Drivers\OpenAi\OpenAiCompatible::class, // It’s OpenAI-compatible
             'default_context_window' => 4096,
             'default_max_completion_tokens' => 1000,
-            'default_temperature' => 0.7,
+            'default_temperature' => 1,
         ],
 
         'gpt41' => [
