@@ -88,6 +88,16 @@ return [
             'default_temperature' => 0.7,
         ],
 
+        'new' => [
+            'label' => 'wisper',
+            'api_key' => env('A4F'),
+            'api_url' => 'https://api.a4f.co/v1',
+            'driver' => \LarAgent\Drivers\OpenAi\OpenAiCompatible::class, // It’s OpenAI-compatible
+            'default_context_window' => 4096,
+            'default_max_completion_tokens' => 1000,
+            'default_temperature' => 0.7,
+        ],
+
 
         'gemini' => [
             'label' => 'gemini',
