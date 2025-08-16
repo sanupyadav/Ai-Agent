@@ -2,15 +2,15 @@
 
 namespace LarAgent;
 
-use Illuminate\Contracts\Auth\Authenticatable;
-use LarAgent\Attributes\Tool as ToolAttribute;
-use LarAgent\Core\Contracts\ChatHistory as ChatHistoryInterface;
-use LarAgent\Core\Contracts\LlmDriver as LlmDriverInterface;
-use LarAgent\Core\Contracts\Message as MessageInterface;
-use LarAgent\Core\Contracts\Tool as ToolInterface;
 use LarAgent\Core\DTO\AgentDTO;
 use LarAgent\Core\Traits\Events;
+use LarAgent\Attributes\Tool as ToolAttribute;
+use Illuminate\Contracts\Auth\Authenticatable;
+use LarAgent\Core\Contracts\Tool as ToolInterface;
 use LarAgent\Messages\StreamedAssistantMessage;
+use LarAgent\Core\Contracts\Message as MessageInterface;
+use LarAgent\Core\Contracts\LlmDriver as LlmDriverInterface;
+use LarAgent\Core\Contracts\ChatHistory as ChatHistoryInterface;
 
 /**
  * Class Agent

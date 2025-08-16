@@ -25,6 +25,7 @@
           <option value="gpt4o">GPT4o</option>
           <option value="gpt41">GPT4.1</option>
           <option value="grok">GROK-3</option>
+          <option value="new">A4F-3</option>
         </select>
       </div>
 

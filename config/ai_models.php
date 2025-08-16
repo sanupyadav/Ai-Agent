@@ -3,8 +3,9 @@
 return [
     'ollama' => [
     ['label' => 'LLaMA 3.2 (3B)', 'value' => 'llama3.2:3b'],
-    ['label' => 'Gemma 2B', 'value' => 'gemma:2b'],
-    ['label' => 'OpenChat', 'value' => 'openchat:latest']
+    ['label' => 'Gemma 9B', 'value' => 'gemma2:9b'],
+    ['label' => 'OpenChat', 'value' => 'openchat:latest'],
+    ['label' => 'DeepSheek', 'value' => 'deepseek-r1']
     // ['label' => 'Neural Cha', 'value' => 'neural-chat'],
 ],
     // 'openai' => [
@@ -20,5 +21,8 @@ return [
     ],
     'grok' => [
         ['label' => 'GROK-3', 'value' => 'xai/grok-3']
+    ], 
+    'new' => [
+        ['label' => 'whisper', 'value' => 'provider-2/whisper-1']
     ],
 ];
