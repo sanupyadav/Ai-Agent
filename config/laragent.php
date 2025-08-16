@@ -88,7 +88,7 @@ return [
             'default_temperature' => 0.7,
         ],
 
-        'new' => [
+        'providers' => [
             'label' => 'wisper',
             'api_key' => env('A4F'),
             'api_url' => 'https://api.a4f.co/v1',
